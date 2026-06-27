@@ -11,7 +11,6 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
-console.log(process.env.MONGO_URI);
 
 app.get("/", (req, res) => {
     res.json({
