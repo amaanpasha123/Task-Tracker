@@ -1,86 +1,237 @@
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import api from "../services/api";
+import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
 
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editTask, setEditTask] = useState(null);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    status: "Pending",
+  });
+
+  // 2. Add inside the component
+  const navigate = useNavigate();
+
+  // Fetch all tasks
+  const fetchTasks = async () => {
+    try {
+      const res = await api.get("/tasks");
+      setTasks(res.data.tasks);
+    } catch (error) {
+      toast.error("Failed to fetch tasks");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  // Open modal for adding
+  const openAddModal = () => {
+    setEditTask(null);
+    setFormData({ title: "", description: "", status: "Pending" });
+    setShowModal(true);
+  };
+
+  const handleLogout = () => {
+    logout(); // clears token from AuthContext
+    navigate("/login"); // redirects to login
+  };
+
+  // Open modal for editing
+  const openEditModal = (task) => {
+    setEditTask(task);
+    setFormData({
+      title: task.title,
+      description: task.description,
+      status: task.status,
+    });
+    setShowModal(true);
+  };
+
+  // Handle form submit (add or edit)
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.title) return toast.error("Title is required");
+
+    try {
+      if (editTask) {
+        await api.put(`/tasks/${editTask._id}`, formData);
+        toast.success("Task updated!");
+      } else {
+        await api.post("/tasks", formData);
+        toast.success("Task added!");
+      }
+      setShowModal(false);
+      fetchTasks();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Something went wrong");
+    }
+  };
+
+  // Delete task
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this task?")) return;
+    try {
+      await api.delete(`/tasks/${id}`);
+      toast.success("Task deleted!");
+      fetchTasks();
+    } catch (error) {
+      toast.error("Failed to delete task");
+    }
+  };
+
+  // Status badge color
+  const statusColor = (status) => {
+    if (status === "Completed") return "bg-green-100 text-green-800";
+    if (status === "In Progress") return "bg-blue-100 text-blue-800";
+    return "bg-yellow-100 text-yellow-800";
+  };
+
   return (
     <div className="min-h-screen bg-slate-100">
-
+      {/* Navbar */}
       <nav className="bg-white shadow-md px-8 py-4 flex justify-between items-center">
-
-        <h1 className="text-2xl font-bold text-blue-600">
-          Task Tracker
-        </h1>
-
+        <h1 className="text-2xl font-bold text-blue-600">Task Tracker</h1>
         <div className="flex items-center gap-4">
-
-          <span className="font-semibold">
-            Welcome, {user?.name}
-          </span>
+          <span className="font-semibold">Welcome, {user?.name}</span>
 
           <button
-            onClick={logout}
+            onClick={handleLogout}
             className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
           >
             Logout
           </button>
-
         </div>
-
       </nav>
 
-      <div className="max-w-6xl mx-auto mt-10">
-
+      {/* Main */}
+      <div className="max-w-4xl mx-auto mt-10 px-4">
         <div className="flex justify-between items-center mb-8">
-
-          <h2 className="text-3xl font-bold">
-            My Tasks
-          </h2>
-
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg">
+          <h2 className="text-3xl font-bold">My Tasks</h2>
+          <button
+            onClick={openAddModal}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg font-semibold"
+          >
             + Add Task
           </button>
-
         </div>
 
-        <div className="grid gap-6">
-
-          <div className="bg-white rounded-xl shadow-md p-6">
-
-            <div className="flex justify-between">
-
-              <h3 className="text-xl font-semibold">
-                Learn MERN Stack
-              </h3>
-
-              <span className="bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full">
-                Pending
-              </span>
-
-            </div>
-
-            <p className="mt-3 text-gray-600">
-              Complete Task Tracker Assignment
-            </p>
-
-            <div className="mt-5 flex gap-3">
-
-              <button className="bg-green-500 text-white px-4 py-2 rounded-lg">
-                Edit
-              </button>
-
-              <button className="bg-red-500 text-white px-4 py-2 rounded-lg">
-                Delete
-              </button>
-
-            </div>
-
+        {/* Task List */}
+        {loading ? (
+          <p className="text-center text-gray-500">Loading tasks...</p>
+        ) : tasks.length === 0 ? (
+          <p className="text-center text-gray-500">No tasks yet. Add one!</p>
+        ) : (
+          <div className="grid gap-6">
+            {tasks.map((task) => (
+              <div key={task._id} className="bg-white rounded-xl shadow-md p-6">
+                <div className="flex justify-between items-start">
+                  <h3 className="text-xl font-semibold">{task.title}</h3>
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${statusColor(task.status)}`}
+                  >
+                    {task.status}
+                  </span>
+                </div>
+                {task.description && (
+                  <p className="mt-3 text-gray-600">{task.description}</p>
+                )}
+                <div className="mt-5 flex gap-3">
+                  <button
+                    onClick={() => openEditModal(task)}
+                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(task._id)}
+                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-
-        </div>
-
+        )}
       </div>
 
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md">
+            <h3 className="text-2xl font-bold mb-6">
+              {editTask ? "Edit Task" : "Add Task"}
+            </h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block mb-1 font-medium">Title</label>
+                <input
+                  type="text"
+                  placeholder="Task title"
+                  value={formData.title}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
+                  className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block mb-1 font-medium">Description</label>
+                <textarea
+                  placeholder="Task description (optional)"
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                />
+              </div>
+              <div>
+                <label className="block mb-1 font-medium">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData({ ...formData, status: e.target.value })
+                  }
+                  className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold"
+                >
+                  {editTask ? "Update Task" : "Add Task"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-semibold"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
