@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-    baseURL: "https://task-tracker-4og9.onrender.com",
+    baseURL: "https://task-tracker-4og9.onrender.com/api",
 });
 
 // Attach token to every request automatically
