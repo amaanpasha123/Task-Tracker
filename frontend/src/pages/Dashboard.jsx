@@ -17,7 +17,10 @@ const Dashboard = () => {
     status: "Pending",
   });
 
-  // 2. Add inside the component
+  const [filter, setFilter] = useState("All");
+  // NEW: Search query state
+  const [searchQuery, setSearchQuery] = useState("");
+
   const navigate = useNavigate();
 
   // Fetch all tasks
@@ -36,6 +39,15 @@ const Dashboard = () => {
     fetchTasks();
   }, []);
 
+  // UPDATED: Filters tasks based on selected status button AND search query matching the title
+  const filteredTasks = tasks.filter((task) => {
+    const matchesFilter = filter === "All" || task.status === filter;
+    const matchesSearch = task.title
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
   // Open modal for adding
   const openAddModal = () => {
     setEditTask(null);
@@ -44,8 +56,8 @@ const Dashboard = () => {
   };
 
   const handleLogout = () => {
-    logout(); // clears token from AuthContext
-    navigate("/login"); // redirects to login
+    logout();
+    navigate("/login");
   };
 
   // Open modal for editing
@@ -105,7 +117,6 @@ const Dashboard = () => {
         <h1 className="text-2xl font-bold text-blue-600">Task Tracker</h1>
         <div className="flex items-center gap-4">
           <span className="font-semibold">Welcome, {user?.name}</span>
-
           <button
             onClick={handleLogout}
             className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
@@ -117,7 +128,7 @@ const Dashboard = () => {
 
       {/* Main */}
       <div className="max-w-4xl mx-auto mt-10 px-4">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-6">
           <h2 className="text-3xl font-bold">My Tasks</h2>
           <button
             onClick={openAddModal}
@@ -127,14 +138,49 @@ const Dashboard = () => {
           </button>
         </div>
 
+        {/* NEW: Search Bar Input Element */}
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Search tasks by title..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+          />
+        </div>
+
+        {/* Filter Buttons */}
+        <div className="flex gap-3 mb-6 flex-wrap">
+          {["All", "Pending", "In Progress", "Completed"].map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                filter === f
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+
         {/* Task List */}
         {loading ? (
           <p className="text-center text-gray-500">Loading tasks...</p>
-        ) : tasks.length === 0 ? (
-          <p className="text-center text-gray-500">No tasks yet. Add one!</p>
+        ) : filteredTasks.length === 0 ? (
+          <p className="text-center text-gray-500">
+            {searchQuery 
+              ? "No tasks match your search criteria." 
+              : filter === "All" 
+                ? "No tasks yet. Add one!" 
+                : `No ${filter} tasks.`
+            }
+          </p>
         ) : (
           <div className="grid gap-6">
-            {tasks.map((task) => (
+            {filteredTasks.map((task) => (
               <div key={task._id} className="bg-white rounded-xl shadow-md p-6">
                 <div className="flex justify-between items-start">
                   <h3 className="text-xl font-semibold">{task.title}</h3>
