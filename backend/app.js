@@ -14,11 +14,12 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://task-tracker-4og9.onrender.com"
+      "https://task-tracker-gamma-gilt.vercel.app"
     ],
     credentials: true,
   })
 );
+
 
 app.use(express.json());
 app.use("/api/auth", authRoutes);
