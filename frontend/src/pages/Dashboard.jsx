@@ -18,7 +18,6 @@ const Dashboard = () => {
   });
 
   const [filter, setFilter] = useState("All");
-  // NEW: Search query state
   const [searchQuery, setSearchQuery] = useState("");
 
   const navigate = useNavigate();
@@ -39,7 +38,27 @@ const Dashboard = () => {
     fetchTasks();
   }, []);
 
-  // UPDATED: Filters tasks based on selected status button AND search query matching the title
+  // NEW: Prevent browser back button from navigating back to login page while authenticated
+  useEffect(() => {
+    // Push an extra entry into the history stack to intercept the back action
+    window.history.pushState(null, null, window.location.href);
+
+    const handlePopState = () => {
+      // If back button is pressed, push state again to restrict navigation away from dashboard
+      window.history.pushState(null, null, window.location.href);
+      toast.error("Please use the Logout button to exit securely.");
+    };
+
+    // Listen for the browser back/forward buttons
+    window.addEventListener("popstate", handlePopState);
+
+    // Clean up event listener when component unmounts
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
+  // Filters tasks based on selected status button AND search query matching the title
   const filteredTasks = tasks.filter((task) => {
     const matchesFilter = filter === "All" || task.status === filter;
     const matchesSearch = task.title
@@ -138,7 +157,7 @@ const Dashboard = () => {
           </button>
         </div>
 
-        {/* NEW: Search Bar Input Element */}
+        {/* Search Bar Input Element */}
         <div className="mb-4">
           <input
             type="text"
